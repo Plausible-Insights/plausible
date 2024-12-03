@@ -20,10 +20,6 @@ const ClearFiltersKeybind = () => (
   />
 )
 
-export function DashboardKeybinds() {
-  return (
-    <>
-      <ClearFiltersKeybind />
-    </>
-  )
+export function DashboardKeybinds() {  
+  return <ClearFiltersKeybind />
 }

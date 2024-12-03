@@ -1,23 +1,24 @@
 /** @format */
 
-import { EllipsisHorizontalIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { EllipsisHorizontalIcon } from '@heroicons/react/20/solid'
 import classNames from 'classnames'
 import React, { useRef, useState, useLayoutEffect, useEffect } from 'react'
-import { AppNavigationLink } from '../navigation/use-app-navigate'
 import { useOnClickOutside } from '../util/use-on-click-outside'
 import {
   DropdownMenuWrapper,
   ToggleDropdownButton
 } from '../components/dropdown'
-import { FilterPillsList, PILL_X_GAP } from './filter-pills-list'
+import { AppliedFilterPillsList, PILL_X_GAP } from './filter-pills-list'
 import { useQueryContext } from '../query-context'
+import { AppNavigationLink } from '../navigation/use-app-navigate'
 
+const LEFT_ACTIONS_GAP_PX = 16
 const SEE_MORE_GAP_PX = 16
 const SEE_MORE_WIDTH_PX = 36
 
 export const handleVisibility = ({
   setVisibility,
-  topBarWidth,
+  leftoverWidth: leftoverWidth,
   actionsWidth,
   seeMorePresent,
   seeMoreWidth,
@@ -25,14 +26,14 @@ export const handleVisibility = ({
   pillGap
 }: {
   setVisibility: (v: VisibilityState) => void
-  topBarWidth: number | null
+  leftoverWidth: number | null
   actionsWidth: number | null
   pillWidths: (number | null)[] | null
   seeMorePresent: boolean
   seeMoreWidth: number
   pillGap: number
 }): void => {
-  if (topBarWidth === null || actionsWidth === null || pillWidths === null) {
+  if (leftoverWidth === null || actionsWidth === null || pillWidths === null) {
     return
   }
 
@@ -52,11 +53,13 @@ export const handleVisibility = ({
     return { visibleCount, lastValidWidth }
   }
 
-  const fits = fitToWidth(topBarWidth - actionsWidth)
+  const fits = fitToWidth(leftoverWidth - actionsWidth)
 
   // Check if possible to fit one more if "See more" is removed
   if (seeMorePresent && fits.visibleCount === pillWidths.length - 1) {
-    const maybeFitsMore = fitToWidth(topBarWidth - actionsWidth + seeMoreWidth)
+    const maybeFitsMore = fitToWidth(
+      leftoverWidth - actionsWidth + seeMoreWidth
+    )
     if (maybeFitsMore.visibleCount === pillWidths.length) {
       return setVisibility({
         width: maybeFitsMore.lastValidWidth,
@@ -67,7 +70,9 @@ export const handleVisibility = ({
 
   // Check if the appearance of "See more" would cause overflow
   if (!seeMorePresent && fits.visibleCount < pillWidths.length) {
-    const maybeFitsLess = fitToWidth(topBarWidth - actionsWidth - seeMoreWidth)
+    const maybeFitsLess = fitToWidth(
+      leftoverWidth - actionsWidth - seeMoreWidth
+    )
     if (maybeFitsLess.visibleCount < fits.visibleCount) {
       return setVisibility({
         width: maybeFitsLess.lastValidWidth,
@@ -113,6 +118,12 @@ export const FiltersBar = () => {
   })
 
   useLayoutEffect(() => {
+    const topLeftActions = containerRef.current?.parentElement
+    const topBar = topLeftActions?.parentElement
+    const datepicker = topBar?.children[1] as HTMLElement | undefined
+    const sitepicker = topLeftActions?.children[0] as HTMLElement | undefined
+    const filterButton = topLeftActions?.children[2] as HTMLElement | undefined
+
     const resizeObserver = new ResizeObserver((_entries) => {
       const pillWidths = pillsRef.current
         ? Array.from(pillsRef.current.children).map((el) =>
@@ -123,15 +134,22 @@ export const FiltersBar = () => {
         setVisibility,
         pillWidths,
         pillGap: PILL_X_GAP,
-        topBarWidth: getElementWidthOrNull(containerRef.current),
+        leftoverWidth:
+          topBar && datepicker && sitepicker && filterButton
+            ? getElementWidthOrNull(topBar)! -
+              getElementWidthOrNull(datepicker)! -
+              getElementWidthOrNull(sitepicker)! -
+              getElementWidthOrNull(filterButton)! -
+              2 * LEFT_ACTIONS_GAP_PX
+            : null,
         actionsWidth: getElementWidthOrNull(actionsRef.current),
         seeMorePresent: !!seeMoreRef.current,
         seeMoreWidth: SEE_MORE_WIDTH_PX + SEE_MORE_GAP_PX
       })
     })
 
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
+    if (containerRef.current && topBar) {
+      resizeObserver.observe(topBar)
     }
 
     return () => {
@@ -146,23 +164,23 @@ export const FiltersBar = () => {
   return (
     <div
       className={classNames(
-        'flex w-full mt-4',
+        'flex w-full',
         visibility === null && 'invisible' // hide until we've calculated the positions
       )}
       ref={containerRef}
     >
-      <FilterPillsList
+      <AppliedFilterPillsList
         ref={pillsRef}
         direction="horizontal"
         slice={{
-          type: 'hide-outside',
+          type: 'invisible-outside',
           start: 0,
           end: visibility?.visibleCount
         }}
-        className="pb-1 overflow-hidden"
+        className="p-1 overflow-hidden"
         style={{ width: visibility?.width ?? '100%' }}
       />
-      <div className="flex items-center gap-x-4 pb-1" ref={actionsRef}>
+      <div className="flex items-center gap-x-4 py-1" ref={actionsRef}>
         {visibility !== null &&
           visibility.visibleCount !== query.filters.length && (
             <ToggleDropdownButton
@@ -182,37 +200,38 @@ export const FiltersBar = () => {
             >
               {opened && typeof visibility.visibleCount === 'number' ? (
                 <DropdownMenuWrapper
-                  id={'more-filters-menu'}
-                  className="md:left-auto md:w-auto"
+                  id="more-filters-menu"
+                  className="md:right-auto"
                   innerContainerClassName="p-4"
                 >
-                  <FilterPillsList
+                  <AppliedFilterPillsList
                     direction="vertical"
                     slice={{
                       type: 'no-render-outside',
                       start: visibility.visibleCount
                     }}
                   />
+                  <ClearAction />
                 </DropdownMenuWrapper>
               ) : null}
             </ToggleDropdownButton>
           )}
-        <ClearAction />
       </div>
     </div>
   )
 }
 
-export const ClearAction = () => (
+
+const ClearAction = () => (
   <AppNavigationLink
     title="Clear all filters"
-    className="w-9 text-gray-500 hover:text-indigo-700 dark:hover:text-indigo-500 flex items-center justify-center"
+    className="flex mt-2 px-3 py-2 text-sm text-gray-500 hover:text-indigo-700 dark:hover:text-indigo-500"
     search={(search) => ({
       ...search,
       filters: null,
       labels: null
     })}
   >
-    <XMarkIcon className="w-4 h-4" />
+    Clear all filters
   </AppNavigationLink>
 )

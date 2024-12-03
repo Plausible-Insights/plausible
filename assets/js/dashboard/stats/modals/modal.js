@@ -1,20 +1,22 @@
-import React from "react";
-import { createPortal } from "react-dom";
-import { NavigateKeybind } from '../../keybinding'
-import { rootRoute } from "../../router";
-import { useAppNavigate } from "../../navigation/use-app-navigate";
+/** @format */
+
+import React from 'react'
+import { createPortal } from 'react-dom'
+import { Keybind } from '../../keybinding'
+import { rootRoute } from '../../router'
+import { useAppNavigate } from '../../navigation/use-app-navigate'
+import classNames from 'classnames'
 
 // This corresponds to the 'md' breakpoint on TailwindCSS.
-const MD_WIDTH = 768;
+const MD_WIDTH = 768
 // We assume that the dashboard is by default opened on a desktop. This is also a fall-back for when, for any reason, the width is not ascertained.
-const DEFAULT_WIDTH = 1080;
-
+const DEFAULT_WIDTH = 1080
 
 class Modal extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      viewport: DEFAULT_WIDTH,
+      viewport: DEFAULT_WIDTH
     }
     this.node = React.createRef()
     this.handleClickOutside = this.handleClickOutside.bind(this)
@@ -22,37 +24,30 @@ class Modal extends React.Component {
   }
 
   componentDidMount() {
-    document.body.style.overflow = 'hidden';
-    document.body.style.height = '100vh';
-    document.addEventListener("mousedown", this.handleClickOutside);
-    window.addEventListener('resize', this.handleResize, false);
-    this.handleResize();
+    document.body.style.overflow = 'hidden'
+    document.body.style.height = '100vh'
+    document.addEventListener('mousedown', this.handleClickOutside)
+    window.addEventListener('resize', this.handleResize, false)
+    this.handleResize()
   }
 
   componentWillUnmount() {
-    document.body.style.overflow = null;
-    document.body.style.height = null;
-    document.removeEventListener("mousedown", this.handleClickOutside);
-    window.removeEventListener('resize', this.handleResize, false);
+    document.body.style.overflow = null
+    document.body.style.height = null
+    document.removeEventListener('mousedown', this.handleClickOutside)
+    window.removeEventListener('resize', this.handleResize, false)
   }
 
   handleClickOutside(e) {
     if (this.node.current.contains(e.target)) {
-      return;
+      return
     }
 
-    this.close()
+    this.props.onClose()
   }
 
   handleResize() {
-    this.setState({ viewport: window.innerWidth });
-  }
-
-  close() {
-    this.props.navigate({
-      path: rootRoute.path,
-      search: (search) => search,
-    })
+    this.setState({ viewport: window.innerWidth })
   }
 
   /**
@@ -63,41 +58,53 @@ class Modal extends React.Component {
    * Note that When a max-width comes from the parent component, we rely on that *always*.
    */
   getStyle() {
-    const { maxWidth } = this.props;
-    const { viewport } = this.state;
-    const styleObject = {};
+    const { maxWidth } = this.props
+    const { viewport } = this.state
+    const styleObject = {}
     if (maxWidth) {
-      styleObject.maxWidth = maxWidth;
+      styleObject.maxWidth = maxWidth
     } else {
-      styleObject.width = viewport <= MD_WIDTH ? "min-content" : "860px";
+      styleObject.width = viewport <= MD_WIDTH ? 'min-content' : '860px'
     }
-    return styleObject;
+    return styleObject
   }
 
   render() {
     return createPortal(
-      <>
-        <NavigateKeybind keyboardKey="Escape" type="keyup" navigateProps={{ path: rootRoute.path, search: (search) => search }} />
-        <div className="modal is-open" onClick={this.props.onClick}>
-          <div className="modal__overlay">
-            <button className="modal__close"></button>
-            <div
-              ref={this.node}
-              className="modal__container dark:bg-gray-800"
-              style={this.getStyle()}
-            >
-              {this.props.children}
-            </div>
+      <div className="modal is-open" onClick={this.props.onClick}>
+        <div className="modal__overlay">
+          <button className="modal__close"></button>
+          <div
+            ref={this.node}
+            className={classNames(
+              'modal__container dark:bg-gray-800',
+              this.props.className
+            )}
+            style={this.getStyle()}
+          >
+            {this.props.children}
           </div>
         </div>
-      </>
-,
-      document.getElementById("modal_root"),
-    );
+      </div>,
+      document.getElementById('modal_root')
+    )
   }
 }
 
 export default function ModalWithRouting(props) {
   const navigate = useAppNavigate()
-  return <Modal {...props} navigate={navigate} />
+  const defaultCloseHandler = () =>
+    navigate({ path: rootRoute.path, search: (s) => s })
+  const closeHandler = props.onClose ?? defaultCloseHandler
+  return (
+    <>
+      <Keybind keyboardKey="Escape" type="keyup" handler={closeHandler} />
+      <Modal
+        onClose={() =>
+          navigate({ path: rootRoute.path, search: (search) => search })
+        }
+        {...props}
+      />
+    </>
+  )
 }

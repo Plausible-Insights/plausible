@@ -13,6 +13,24 @@ import {
   AppNavigationLink,
   AppNavigationTarget
 } from '../navigation/use-app-navigate'
+import { NavigateOptions } from 'react-router-dom'
+
+export const DropdownSubtitle = ({
+  children,
+  className
+}: {
+  children: ReactNode
+  className?: string
+}) => (
+  <div
+    className={classNames(
+      'text-xs px-4 pt-2 pb-1 font-bold uppercase text-indigo-500 dark:text-indigo-400',
+      className
+    )}
+  >
+    {children}
+  </div>
+)
 
 export const ToggleDropdownButton = forwardRef<
   HTMLDivElement,
@@ -109,12 +127,12 @@ export const DropdownMenuWrapper = forwardRef<
   )
 })
 
-export const DropdownLinkGroup = ({
-  className,
-  children,
-  ...props
-}: DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>) => (
+export const DropdownLinkGroup = React.forwardRef<
+  HTMLDivElement,
+  DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>
+>(({ className, children, ...props }, ref) => (
   <div
+    ref={ref}
     {...props}
     className={classNames(
       className,
@@ -123,28 +141,55 @@ export const DropdownLinkGroup = ({
   >
     {children}
   </div>
-)
+))
 
 export const DropdownNavigationLink = ({
   children,
   active,
   className,
+  actions,
+  path,
+  params,
+  search,
+  navigateOptions,
+  onLinkClick,
   ...props
 }: AppNavigationTarget & {
-  active?: boolean
-  children: ReactNode
-  className?: string
-  onClick?: () => void
-}) => (
-  <AppNavigationLink
-    {...props}
+  navigateOptions?: NavigateOptions
+} & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement> & {
+    active?: boolean
+    onLinkClick?: () => void
+    actions?: ReactNode
+  }) => (
+  <div
     className={classNames(
-      className,
       { 'font-bold': !!active },
       'flex items-center justify-between',
-      `px-4 py-2 text-sm leading-tight hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-900 dark:hover:text-gray-100`
+      'text-sm leading-tight',
+      {
+        'hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-900 dark:hover:text-gray-100':
+          !props['aria-disabled']
+      },
+      'aria-disabled:cursor-not-allowed aria-disabled:text-gray-500',
+      !!actions && 'pr-4',
+      className
     )}
+    {...props}
   >
-    {children}
-  </AppNavigationLink>
+    <AppNavigationLink
+      className={classNames(
+        'flex items-center justify-between w-full py-2 truncate',
+        actions ? 'pl-4' : 'px-4',
+        { 'cursor-not-allowed': props['aria-disabled'] }
+      )}
+      path={path}
+      params={params}
+      search={search}
+      onClick={onLinkClick}
+      {...navigateOptions}
+    >
+      {children}
+    </AppNavigationLink>
+    {!!actions && actions}
+  </div>
 )
