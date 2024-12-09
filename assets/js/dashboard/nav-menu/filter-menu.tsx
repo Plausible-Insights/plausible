@@ -1,6 +1,6 @@
 /** @format */
 
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   DropdownLinkGroup,
   DropdownMenuWrapper,
@@ -8,7 +8,6 @@ import {
   DropdownSubtitle,
   ToggleDropdownButton
 } from '../components/dropdown'
-import { MagnifyingGlassIcon } from '@heroicons/react/20/solid'
 import {
   cleanLabels,
   FILTER_MODAL_TO_FILTER_GROUP,
@@ -18,12 +17,9 @@ import {
 import { PlausibleSite, useSiteContext } from '../site-context'
 import { filterRoute } from '../router'
 import { useOnClickOutside } from '../util/use-on-click-outside'
-import { SegmentsList } from '../segments/segments-dropdown'
+import { EditSegmentMenu, SegmentsList } from '../segments/segments-dropdown'
 import { useQueryContext } from '../query-context'
-import {
-  SegmentExpandedLocationState,
-  useSegmentExpandedContext
-} from '../segments/segment-expanded-context'
+import { useSegmentExpandedContext } from '../segments/segment-expanded-context'
 import {
   CreateSegmentModal,
   DeleteSegmentModal,
@@ -39,7 +35,13 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppNavigate } from '../navigation/use-app-navigate'
 import { DashboardQuery } from '../query'
-import { AdjustmentsHorizontalIcon } from '@heroicons/react/24/solid'
+import { PlusIcon } from '@heroicons/react/20/solid'
+// import {
+//   PlusIcon,
+// } from '@heroicons/react/24/outline'
+import { SearchInput } from '../components/search-input'
+import classNames from 'classnames'
+import { isModifierPressed, isTyping, Keybind } from '../keybinding'
 
 export function getFilterListItems({
   propsAvailable
@@ -83,6 +85,10 @@ export const FilterMenu = () => {
   const { expandedSegment, modal } = useSegmentExpandedContext()
   const queryClient = useQueryClient()
   const navigate = useAppNavigate()
+  const [search, setSearch] = useState<string>()
+  useEffect(() => {
+    setSearch(undefined)
+  }, [opened])
   const patchSegment = useMutation({
     mutationFn: ({
       id,
@@ -139,7 +145,8 @@ export const FilterMenu = () => {
         state: {
           expandedSegment: null,
           modal: null
-        } as SegmentExpandedLocationState
+        },
+        replace: true
       })
       setOpened(false)
     }
@@ -196,7 +203,8 @@ export const FilterMenu = () => {
         state: {
           expandedSegment: null,
           modal: null
-        } as SegmentExpandedLocationState
+        },
+        replace: true
       })
       setOpened(false)
     }
@@ -228,7 +236,8 @@ export const FilterMenu = () => {
         state: {
           expandedSegment: null,
           modal: null
-        } as SegmentExpandedLocationState
+        },
+        replace: true
       })
       setOpened(false)
     }
@@ -240,6 +249,8 @@ export const FilterMenu = () => {
     handler: () => setOpened(false)
   })
 
+  console.log(modal)
+
   return (
     <>
       {user.loggedIn && modal === 'update' && expandedSegment && (
@@ -249,10 +260,11 @@ export const FilterMenu = () => {
           )}
           segment={expandedSegment}
           namePlaceholder={getSegmentNamePlaceholder(query)}
-          close={() =>
+          onClose={() =>
             navigate({
               search: (s) => s,
-              state: { expandedSegment: expandedSegment, modal: null }
+              state: { expandedSegment, modal: null },
+              replace: true
             })
           }
           onSave={({ id, name, type }) =>
@@ -278,7 +290,8 @@ export const FilterMenu = () => {
           onClose={() =>
             navigate({
               search: (s) => s,
-              state: { expandedSegment: expandedSegment, modal: null }
+              state: { expandedSegment, modal: null },
+              replace: true
             })
           }
           onSave={({ name, type }) =>
@@ -299,77 +312,102 @@ export const FilterMenu = () => {
           onClose={() =>
             navigate({
               search: (s) => s,
-              state: { expandedSegment: expandedSegment, modal: null }
+              state: { expandedSegment, modal: null },
+              replace: true
             })
           }
           onSave={({ id }) => deleteSegment.mutate({ id })}
         />
       )}
+      <div className="ml-auto shrink-0 flex gap-x-2">
+        <ToggleDropdownButton
+          ref={dropdownRef}
+          variant="ghost"
+          className="ml-auto md:relative"
+          dropdownContainerProps={{
+            ['aria-controls']: 'filter-menu',
+            ['aria-expanded']: opened
+          }}
+          onClick={() => setOpened((opened) => !opened)}
+          currentOption={
+            <div className="flex items-center gap-1 ">
+              <PlusIcon className="block h-4 w-4" />
+              Add filter
+            </div>
+          }
+        >
+          {opened && (
+            <DropdownMenuWrapper
+              id="filter-menu"
+              className="md:left-auto md:w-80"
+            >
+              <Keybind
+                keyboardKey="Escape"
+                shouldIgnoreWhen={[isModifierPressed, isTyping]}
+                type="keyup"
+                handler={(event) => {
+                  event.stopPropagation()
+                  setOpened(false)
+                }}
+                target={dropdownRef.current}
+              />
+              <div className="px-4 pb-1 pt-4">
+                <SearchInput
+                  placeholderUnfocused="Press / to search"
+                  className="w-full text-xs sm:text-xs"
+                  onSearch={setSearch}
+                />
+              </div>
 
-      <ToggleDropdownButton
-        ref={dropdownRef}
-        variant="ghost"
-        className="ml-auto md:relative shrink-0"
-        dropdownContainerProps={{
-          ['aria-controls']: 'filter-menu',
-          ['aria-expanded']: opened
-        }}
-        onClick={() => setOpened((opened) => !opened)}
-        currentOption={
-          <div className="flex items-center gap-1 ">
-            {!expandedSegment && (
-              <>
-                <MagnifyingGlassIcon className="block h-4 w-4" />
-                Filter
-              </>
-            )}
-            {!!expandedSegment && (
-              <>
-                <AdjustmentsHorizontalIcon className="block h-4 w-4" />
-                Edit segment
-              </>
-            )}
-            {/* <span className="block ml-1">{expandedSegment ? 'Segment' : 'Filter'}</span> */}
-          </div>
-        }
-      >
-        {opened && (
-          <DropdownMenuWrapper
-            id="filter-menu"
-            className="md:left-auto md:w-80"
-          >
-            <SegmentsList closeList={() => setOpened(false)} />
-            <DropdownLinkGroup className="flex flex-row">
-              {columns.map((filterGroups, index) => (
-                <div key={index} className="flex flex-col w-1/2">
-                  {filterGroups.map(({ title, modals }) => (
-                    <div key={title}>
-                      <DropdownSubtitle className="pb-1">
-                        {title}
-                      </DropdownSubtitle>
-                      {modals
-                        .filter((m) => !!m)
-                        .map((modalKey) => (
-                          <DropdownNavigationLink
-                            className="text-xs"
-                            onLinkClick={() => setOpened(false)}
-                            active={false}
-                            key={modalKey}
-                            path={filterRoute.path}
-                            params={{ field: modalKey }}
-                            search={(search) => search}
-                          >
-                            {formatFilterGroup(modalKey)}
-                          </DropdownNavigationLink>
-                        ))}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </DropdownLinkGroup>
-          </DropdownMenuWrapper>
-        )}
-      </ToggleDropdownButton>
+              <DropdownLinkGroup className="flex flex-row">
+                {columns.map((filterGroups, index) => (
+                  <div key={index} className="flex flex-col w-1/2">
+                    {filterGroups.map(({ title, modals }) => (
+                      <div key={title}>
+                        <DropdownSubtitle className="pb-1">
+                          {title}
+                        </DropdownSubtitle>
+                        {modals
+                          .filter((m) => !!m)
+                          .map((modalKey) => (
+                            <DropdownNavigationLink
+                              className={classNames('text-xs', {
+                                'opacity-50':
+                                  search?.trim().length &&
+                                  !title
+                                    .toLowerCase()
+                                    .includes(search.trim().toLowerCase()) &&
+                                  !formatFilterGroup(modalKey)
+                                    .toLowerCase()
+                                    .includes(search.trim().toLowerCase())
+                              })}
+                              onLinkClick={() => setOpened(false)}
+                              active={false}
+                              key={modalKey}
+                              path={filterRoute.path}
+                              params={{ field: modalKey }}
+                              search={(search) => search}
+                            >
+                              {formatFilterGroup(modalKey)}
+                            </DropdownNavigationLink>
+                          ))}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </DropdownLinkGroup>
+              {!expandedSegment && (
+                <SegmentsList
+                  closeList={() => setOpened(false)}
+                  searchValue={search}
+                />
+              )}
+            </DropdownMenuWrapper>
+          )}
+        </ToggleDropdownButton>
+
+        {!!expandedSegment && <EditSegmentMenu />}
+      </div>
     </>
   )
 }

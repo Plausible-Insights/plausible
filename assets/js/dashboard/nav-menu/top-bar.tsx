@@ -10,7 +10,6 @@ import Filters from '../filters'
 import classNames from 'classnames'
 import { useInView } from 'react-intersection-observer'
 import { FilterMenu } from './filter-menu'
-import SegmentExpandedContextProvider from '../segments/segment-expanded-context'
 
 interface TopBarProps {
   showCurrentVisitors: boolean
@@ -40,19 +39,21 @@ export function TopBar({ showCurrentVisitors, extraBar }: TopBarProps) {
             className="flex items-center w-full gap-x-2"
             ref={tooltipBoundary}
           >
-            <SiteSwitcher
-              site={site}
-              loggedIn={user.loggedIn}
-              currentUserRole={user.role}
-            />
-            {saved_segments && !extraBar && showCurrentVisitors && (
-              <CurrentVisitors tooltipBoundary={tooltipBoundary.current} />
-            )}
-            {saved_segments && !!extraBar && extraBar}
+            <div className="flex items-center gap-x-2 shrink-0">
+              <SiteSwitcher
+                site={site}
+                loggedIn={user.loggedIn}
+                currentUserRole={user.role}
+              />
+              {showCurrentVisitors && (
+                <CurrentVisitors tooltipBoundary={tooltipBoundary.current} />
+              )}
+            </div>
             {saved_segments ? (
-              <SegmentExpandedContextProvider>
+              <>
+                {!!extraBar && extraBar}
                 <FilterMenu />
-              </SegmentExpandedContextProvider>
+              </>
             ) : (
               <Filters />
             )}

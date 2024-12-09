@@ -14,6 +14,7 @@ import {
   AppNavigationTarget
 } from '../navigation/use-app-navigate'
 import { NavigateOptions } from 'react-router-dom'
+import { primaryNeutralButtonClass } from '../segments/segment-modals'
 
 export const DropdownSubtitle = ({
   children,
@@ -32,10 +33,68 @@ export const DropdownSubtitle = ({
   </div>
 )
 
+export const SplitButton = forwardRef<
+  HTMLDivElement,
+  {
+    className?: string
+    leftOption: ReactNode
+    children: ReactNode
+    onClick: () => void
+    dropdownContainerProps: DetailedHTMLProps<
+      HTMLAttributes<HTMLButtonElement>,
+      HTMLButtonElement
+    >
+  }
+>(
+  (
+    {
+      className,
+      leftOption,
+      children,
+      onClick,
+      dropdownContainerProps
+      // ...props
+    },
+    ref
+  ) => {
+    const sharedButtonClass = 'flex items-stretch text-sm leading-tight h-9'
+
+    return (
+      <div className={className} ref={ref}>
+        <div
+          className={
+            classNames(sharedButtonClass)
+            // primaryNeutralButtonClass
+            // padded && 'p-2'
+          }
+        >
+          {leftOption}
+          {/* <div className="w-[1px]border-l-1 border-indigo-800 self-stretch"></div> */}
+          <button
+            className={classNames(
+              primaryNeutralButtonClass,
+              '!px-2 !py-2',
+              'rounded-l-none',
+              'border-l-1 border-indigo-800'
+            )}
+            onClick={onClick}
+            {...dropdownContainerProps}
+            aria-haspopup="true"
+          >
+            <ChevronDownIcon className="block w-4 h-4" />
+          </button>
+        </div>
+        {children}
+      </div>
+    )
+  }
+)
+
 export const ToggleDropdownButton = forwardRef<
   HTMLDivElement,
   {
     variant?: 'ghost' | 'button'
+    padded?: boolean
     withDropdownIndicator?: boolean
     className?: string
     currentOption: ReactNode
@@ -59,9 +118,9 @@ export const ToggleDropdownButton = forwardRef<
     },
     ref
   ) => {
-    const { variant } = { variant: 'button', ...props }
+    const { variant, padded } = { variant: 'button', padded: true, ...props }
     const sharedButtonClass =
-      'flex items-center rounded text-sm leading-tight px-2 py-2 h-9'
+      'flex items-center rounded text-sm leading-tight h-9'
 
     const buttonClass = {
       ghost:
@@ -74,7 +133,11 @@ export const ToggleDropdownButton = forwardRef<
       <div className={className} ref={ref}>
         <button
           onClick={onClick}
-          className={classNames(sharedButtonClass, buttonClass)}
+          className={classNames(
+            sharedButtonClass,
+            buttonClass,
+            padded && 'p-2'
+          )}
           tabIndex={0}
           aria-haspopup="true"
           {...dropdownContainerProps}

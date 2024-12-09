@@ -11,10 +11,17 @@ import {
 import { AppliedFilterPillsList, PILL_X_GAP } from './filter-pills-list'
 import { useQueryContext } from '../query-context'
 import { AppNavigationLink } from '../navigation/use-app-navigate'
+import { useSegmentExpandedContext } from '../segments/segment-expanded-context'
+import {
+  buttonClass,
+  primaryNeutralButtonClass,
+  secondaryButtonClass
+} from '../segments/segment-modals'
+import { isSegmentFilter } from '../segments/segments'
 
-const LEFT_ACTIONS_GAP_PX = 16
-const SEE_MORE_GAP_PX = 16
-const SEE_MORE_WIDTH_PX = 36
+const LEFT_ACTIONS_GAP_PX = 8
+const SEE_MORE_GAP_PX = 0
+const SEE_MORE_WIDTH_PX = 40
 
 export const handleVisibility = ({
   setVisibility,
@@ -56,17 +63,17 @@ export const handleVisibility = ({
   const fits = fitToWidth(leftoverWidth - actionsWidth)
 
   // Check if possible to fit one more if "See more" is removed
-  if (seeMorePresent && fits.visibleCount === pillWidths.length - 1) {
-    const maybeFitsMore = fitToWidth(
-      leftoverWidth - actionsWidth + seeMoreWidth
-    )
-    if (maybeFitsMore.visibleCount === pillWidths.length) {
-      return setVisibility({
-        width: maybeFitsMore.lastValidWidth,
-        visibleCount: maybeFitsMore.visibleCount
-      })
-    }
-  }
+  // if (seeMorePresent && fits.visibleCount === pillWidths.length - 1) {
+  //   const maybeFitsMore = fitToWidth(
+  //     leftoverWidth - actionsWidth + seeMoreWidth
+  //   )
+  //   if (maybeFitsMore.visibleCount === pillWidths.length) {
+  //     return setVisibility({
+  //       width: maybeFitsMore.lastValidWidth,
+  //       visibleCount: maybeFitsMore.visibleCount
+  //     })
+  //   }
+  // }
 
   // Check if the appearance of "See more" would cause overflow
   if (!seeMorePresent && fits.visibleCount < pillWidths.length) {
@@ -102,6 +109,7 @@ export const FiltersBar = () => {
   const seeMoreRef = useRef<HTMLDivElement>(null)
   const [visibility, setVisibility] = useState<null | VisibilityState>(null)
   const { query } = useQueryContext()
+  const { expandedSegment } = useSegmentExpandedContext()
 
   const [opened, setOpened] = useState(false)
 
@@ -123,7 +131,7 @@ export const FiltersBar = () => {
     const datepicker = topBar?.children[1] as HTMLElement | undefined
     const sitepicker = topLeftActions?.children[0] as HTMLElement | undefined
     const filterButton = topLeftActions?.children[2] as HTMLElement | undefined
-
+    console.log(filterButton?.offsetWidth)
     const resizeObserver = new ResizeObserver((_entries) => {
       const pillWidths = pillsRef.current
         ? Array.from(pillsRef.current.children).map((el) =>
@@ -155,11 +163,14 @@ export const FiltersBar = () => {
     return () => {
       resizeObserver.disconnect()
     }
-  }, [query.filters])
+  }, [query.filters, expandedSegment])
 
   if (!query.filters.length) {
     return null
   }
+
+  const canSave = !query.filters.some(isSegmentFilter) && !expandedSegment
+  const canClear = query.filters.length > 1
 
   return (
     <div
@@ -177,19 +188,19 @@ export const FiltersBar = () => {
           start: 0,
           end: visibility?.visibleCount
         }}
-        className="p-1 overflow-hidden"
+        className="overflow-hidden"
         style={{ width: visibility?.width ?? '100%' }}
       />
-      <div className="flex items-center gap-x-4 py-1" ref={actionsRef}>
+      <div className="flex items-center gap-x-4 pl-1" ref={actionsRef}>
         {visibility !== null &&
-          visibility.visibleCount !== query.filters.length && (
+          (query.filters.length !== visibility.visibleCount ||
+            canSave ||
+            canClear) && (
             <ToggleDropdownButton
               className={classNames('w-9 md:relative')}
               ref={seeMoreRef}
               dropdownContainerProps={{
-                ['title']: opened
-                  ? 'Hide rest of the filters'
-                  : 'Show rest of the filters',
+                ['title']: opened ? 'Show more' : 'Show less',
                 ['aria-controls']: 'more-filters-menu',
                 ['aria-expanded']: opened
               }}
@@ -198,20 +209,28 @@ export const FiltersBar = () => {
                 <EllipsisHorizontalIcon className="h-full w-full" />
               }
             >
-              {opened && typeof visibility.visibleCount === 'number' ? (
+              {opened ? (
                 <DropdownMenuWrapper
                   id="more-filters-menu"
                   className="md:right-auto"
-                  innerContainerClassName="p-4"
+                  innerContainerClassName="flex flex-col p-4 gap-y-2"
                 >
-                  <AppliedFilterPillsList
-                    direction="vertical"
-                    slice={{
-                      type: 'no-render-outside',
-                      start: visibility.visibleCount
-                    }}
-                  />
-                  <ClearAction />
+                  {query.filters.length !== visibility.visibleCount && (
+                    <AppliedFilterPillsList
+                      className="-m-1"
+                      direction="vertical"
+                      slice={{
+                        type: 'no-render-outside',
+                        start: visibility.visibleCount
+                      }}
+                    />
+                  )}
+                  {canSave && (
+                    <SaveSelectionAsSegment
+                      closeMenu={() => setOpened(false)}
+                    />
+                  )}
+                  {canClear && <ClearAction />}
                 </DropdownMenuWrapper>
               ) : null}
             </ToggleDropdownButton>
@@ -221,17 +240,45 @@ export const FiltersBar = () => {
   )
 }
 
+export const chillButtonClass =
+  '!flex !self-start !text-sm !px-3 !py-2 whitespace-nowrap'
+
+const SaveSelectionAsSegment = ({ closeMenu }: { closeMenu: () => void }) => {
+  const _s = useSegmentExpandedContext()
+  return (
+    <AppNavigationLink
+      // title="Save as segment"
+      className={classNames(
+        buttonClass,
+        primaryNeutralButtonClass,
+        chillButtonClass
+      )}
+      search={(s) => s}
+      state={{ modal: 'create', expandedSegment: null }}
+      onClick={() => {
+        closeMenu()
+      }}
+    >
+      Save as segment
+    </AppNavigationLink>
+  )
+}
 
 const ClearAction = () => (
   <AppNavigationLink
     title="Clear all filters"
-    className="flex mt-2 px-3 py-2 text-sm text-gray-500 hover:text-indigo-700 dark:hover:text-indigo-500"
+    className={classNames(
+      buttonClass,
+      secondaryButtonClass,
+      chillButtonClass,
+      '!border-0'
+    )}
     search={(search) => ({
       ...search,
       filters: null,
       labels: null
     })}
   >
-    Clear all filters
+    <div>Clear all filters</div>
   </AppNavigationLink>
 )

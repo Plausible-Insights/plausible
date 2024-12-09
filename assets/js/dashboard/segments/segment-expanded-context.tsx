@@ -6,16 +6,17 @@ import React, {
   useLayoutEffect,
   useState
 } from 'react'
-import { useLocation } from 'react-router-dom'
-import { SavedSegment } from './segments'
+import { SavedSegment, SegmentData } from './segments'
+import { useLocation, useNavigationType } from 'react-router-dom'
+import { useAppNavigate } from '../navigation/use-app-navigate'
 import { useQueryContext } from '../query-context'
 
-export type SegmentExpandedLocationState = {
-  expandedSegment: SavedSegment | null
+export type SegmentExpandedState = {
+  expandedSegment: (SavedSegment & { segment_data: SegmentData }) | null
   modal: 'create' | 'update' | 'delete' | null
 }
 
-const segmentExpandedContextDefaultValue: SegmentExpandedLocationState = {
+const segmentExpandedContextDefaultValue: SegmentExpandedState = {
   expandedSegment: null,
   modal: null
 }
@@ -28,39 +29,67 @@ export const useSegmentExpandedContext = () => {
   return useContext(SegmentExpandedContext)
 }
 
+// initial state, there's no expandedSegment
+// link navigates to expandedSegment
+// other links navigate away with no state setting
+// --> components receives old expandedSegment
+// link navigates
+
 export default function SegmentExpandedContextProvider({
   children
 }: {
   children: ReactNode
 }) {
+  const location = useLocation()
+  const type = useNavigationType()
+  const navigate = useAppNavigate()
+  // const initial = location.state?.expandedSegment
+  //   ? {
+  //       modal: location.state.modal,
+  //       expandedSegment: location.state.expandedSegment
+  //     }
+  //   : { modal: null, expandedSegment: null }
+
   const { query } = useQueryContext()
-
-  const { state: locationState } = useLocation() as {
-    state?: SegmentExpandedLocationState
-  }
-  
-  const [expandedSegment, setExpandedSegment] = useState<SavedSegment | null>(
-    null
-  )
+  const [expandedSegmentState, setState] = useState<SegmentExpandedState>()
 
   useLayoutEffect(() => {
-    if (locationState?.expandedSegment) {
-      setExpandedSegment(locationState?.expandedSegment)
+    if (
+      (!expandedSegmentState?.expandedSegment &&
+        !location.state?.expandedSegment &&
+        !location.state?.modal) ||
+      !query.filters.length
+    ) {
+      console.log('resetting')
+      navigate({
+        search: (s) => s,
+        state: segmentExpandedContextDefaultValue,
+        replace: true
+      })
     }
-    if (locationState?.expandedSegment === null) {
-      setExpandedSegment(null)
-    }
-  }, [locationState?.expandedSegment])
+  }, [navigate, expandedSegmentState, location.state, query.filters])
 
   useLayoutEffect(() => {
-    if (!query.filters.length) {
-      setExpandedSegment(null)
+    if (location.state?.expandedSegment || location.state?.modal) {
+      setState({
+        expandedSegment: location.state.expandedSegment,
+        modal: location.state?.modal
+      })
+      console.log('copying to state')
     }
-  }, [query.filters.length])
+    if (location.state?.expandedSegment === null && !location.state?.modal) {
+      setState(segmentExpandedContextDefaultValue)
+    }
+    // if (type === 'POP' && location.state?.expandedSegment) {
+    //   setState(segmentExpandedContextDefaultValue)
+    // }
+  }, [location.state, type])
+
+  console.log({ location, type, expandedSegmentState })
 
   return (
     <SegmentExpandedContext.Provider
-      value={{ expandedSegment: expandedSegment, modal: locationState?.modal ?? null }}
+      value={expandedSegmentState ?? segmentExpandedContextDefaultValue}
     >
       {children}
     </SegmentExpandedContext.Provider>
