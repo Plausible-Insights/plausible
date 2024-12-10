@@ -351,13 +351,6 @@ export const FilterMenu = () => {
                 }}
                 target={dropdownRef.current}
               />
-              <div className="px-4 pb-1 pt-4">
-                <SearchInput
-                  placeholderUnfocused="Press / to search"
-                  className="w-full text-xs sm:text-xs"
-                  onSearch={setSearch}
-                />
-              </div>
 
               <DropdownLinkGroup className="flex flex-row">
                 {columns.map((filterGroups, index) => (

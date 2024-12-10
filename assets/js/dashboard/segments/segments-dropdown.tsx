@@ -40,14 +40,14 @@ import {
 import { useOnClickOutside } from '../util/use-on-click-outside'
 import { isModifierPressed, isTyping, Keybind } from '../keybinding'
 import { primaryNeutralButtonClass } from './segment-modals'
+import { SearchInput } from '../components/search-input'
+import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid'
 
 export const useSegmentsListQuery = () => {
   const site = useSiteContext()
   const { query } = useQueryContext()
   const segmentsFilter = query.filters.find(isSegmentFilter)
-  const appliedSegmentIds = segmentsFilter
-    ? (segmentsFilter[2] as number[])
-    : []
+  const appliedSegmentIds = [] as number[]
   return useQuery({
     queryKey: ['segments'],
     placeholderData: (previousData) => previousData,
@@ -75,28 +75,40 @@ export const useSegmentsListQuery = () => {
 const linkClass = 'text-xs'
 
 export const SegmentsList = ({
-  closeList,
-  searchValue
+  closeList
+  // searchValue
 }: {
   closeList: () => void
-  searchValue?: string
+  // searchValue?: string
 }) => {
   const { query } = useQueryContext()
 
   const { data } = useSegmentsListQuery()
-
+  const [searchValue, setSearch] = useState<string>()
+  const initialSliceLength = 5
+  const [sliceLength, setSliceLength] = useState(initialSliceLength)
   const segmentFilter = query.filters.find(isSegmentFilter)
   const appliedSegmentIds = (segmentFilter ? segmentFilter[2] : []) as number[]
   const filteredData = data?.filter(
     getFilterSegmentsByNameInsensitive(searchValue)
   )
-  const showableSlice = filteredData?.slice(0, 5)
+  // const max = 5
+  const showableSlice = filteredData?.slice(0, sliceLength)
 
   return (
     <>
       {!!data?.length && (
         <DropdownLinkGroup>
-          <DropdownSubtitle>Segments</DropdownSubtitle>
+          <div className="flex items-center mt-1 ">
+            <DropdownSubtitle>Segments</DropdownSubtitle>
+            {data.length > initialSliceLength && (
+              <SearchInput
+                placeholderUnfocused="Press / to search"
+                className="w-full text-xs sm:text-xs text-xs py-1 mr-4"
+                onSearch={setSearch}
+              />
+            )}
+          </div>
 
           {showableSlice!.map((s) => {
             return (
@@ -126,19 +138,19 @@ export const SegmentsList = ({
               </Tooltip>
             )
           })}
-          {!!data?.length && (
+          {!!data?.length && sliceLength < data.length && (
             <DropdownNavigationLink
               className={classNames(
                 linkClass,
                 'font-bold hover:text-indigo-700 dark:hover:text-indigo-500'
               )}
-              path={filterRoute.path}
-              params={{ field: 'segment' }}
+              // path={filterRoute.path}
+              // params={{ field: 'segment' }}
               search={(s) => s}
-              onLinkClick={closeList}
+              onLinkClick={() => setSliceLength(data.length)}
             >
               View all
-              <ChevronRightIcon className="block w-4 h-4" />
+              <EllipsisHorizontalIcon className="block w-4 h-4" />
             </DropdownNavigationLink>
           )}
         </DropdownLinkGroup>
@@ -229,13 +241,12 @@ const SegmentLink = ({
     <DropdownNavigationLink
       className={linkClass}
       key={id}
-      active={appliedSegmentIds.includes(id)}
+      // active={appliedSegmentIds.includes(id)}
       onMouseEnter={prefetchSegment}
       onLinkClick={closeList}
       search={(search) => {
         const otherFilters = query.filters.filter((f) => !isSegmentFilter(f))
         const updatedSegmentIds = appliedSegmentIds.includes(id) ? [] : [id]
-
         if (!updatedSegmentIds.length) {
           return {
             ...search,
@@ -258,7 +269,7 @@ const SegmentLink = ({
         }
       }}
       actions={
-        !canSeeActions ? null : (
+        !canSeeActions || true ? null : (
           <>
             <button
               title="Edit segment"

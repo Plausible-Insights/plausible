@@ -327,6 +327,7 @@ const SegmentRow = ({
   segmentDataVisible: boolean
   toggleSegmentDataVisible: () => void
 }) => {
+  const { query } = useQueryContext()
   const navigate = useAppNavigate()
   const { prefetchSegment, data, fetchSegment } = useSegmentPrefetch({
     id
@@ -338,58 +339,40 @@ const SegmentRow = ({
     }
   }, [segmentDataVisible, fetchSegment])
   return (
-    <div
-      className="grid grid-cols-[1fr_20px] gap-x-2 shadow rounded bg-white dark:bg-gray-850 text-gray-700 dark:text-gray-300 text-sm py-3 px-3 transition-all"
-      onMouseEnter={prefetchSegment}
-    >
-      <div className="flex gap-x-2 text-left">
-        <input
-          id={String(id)}
-          type="checkbox"
-          checked={selected}
-          value=""
-          onChange={toggleSelected}
-          className="my-0.5 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-        />
-        <label
-          htmlFor={String(id)}
-          className={classNames(
-            'cursor-pointer break-all',
-            selected && 'font-extrabold'
-          )}
-        >
-          {name}
-        </label>
-      </div>
-      <button
-        className="flex w-5 h-5 items-center justify-center"
-        onClick={toggleSegmentDataVisible}
-      >
-        {segmentDataVisible ? (
-          <ChevronUpIcon className="block w-4 h-4" />
-        ) : (
-          <ChevronDownIcon className="block w-4 h-4" />
-        )}
-      </button>
-
-      {segmentDataVisible && (
-        <div className="col-span-full mt-3">
+    <>
+      {true && (
+        <div className="col-span-full">
           {data?.segment_data ? (
-            <FilterPillsList
-              className="flex-wrap"
-              direction="horizontal"
-              pills={data.segment_data.filters.map((filter) => ({
-                // className: 'dark:!bg-gray-700',
-                plainText: plainFilterText(data.segment_data.labels, filter),
-                children: styledFilterText(data.segment_data.labels, filter),
-                interactive: false
-              }))}
-            />
+            <>
+              <h2 className="font-medium dark:text-gray-100">
+                Filters in segment
+              </h2>
+              <FilterPillsList
+                className="-mx-1 flex-wrap"
+                direction="horizontal"
+                pills={data.segment_data.filters.map((filter) => ({
+                  // className: 'dark:!bg-gray-700',
+                  plainText: plainFilterText(data.segment_data.labels, filter),
+                  children: styledFilterText(data.segment_data.labels, filter),
+                  interactive: false
+                }))}
+              />
+              <div className="mt-2 text-xs">
+                {
+                  {
+                    [SegmentType.personal]: 'Personal segment',
+                    [SegmentType.site]: 'Site segment'
+                  }[data.type]
+                }
+              </div>
+
+              <SegmentAuthorship {...data} className="mt-1 text-xs" />
+            </>
           ) : (
             'loading'
           )}
-          {!!data && <SegmentAuthorship {...data} className="mt-3 text-xs" />}
-          {!!data && (
+          {/* {!!data && } */}
+          {/* {!!data && (
             <div className="col-span-full mt-3 flex gap-x-4 gap-y-2 flex-wrap">
               <button
                 className="flex gap-x-1 text-sm items-center hover:text-indigo-600 fill-current hover:fill-indigo-600"
@@ -411,10 +394,53 @@ const SegmentRow = ({
                 Edit
               </button>
             </div>
-          )}
+          )} */}
         </div>
       )}
-    </div>
+      {!!data && (
+        <div className="mt-4">
+          <ButtonsRow>
+            <AppNavigationLink
+              className={primaryNegativeButtonClass}
+              path={rootRoute.path}
+              search={(s) => {
+                const nonSegmentFilters = query.filters.filter(
+                  (f) => !isSegmentFilter(f)
+                )
+                return {
+                  ...s,
+                  filters: nonSegmentFilters,
+                  labels: cleanLabels(
+                    nonSegmentFilters,
+                    query.labels,
+                    'segment',
+                    {}
+                  )
+                }
+              }}
+            >
+              Remove filter
+            </AppNavigationLink>
+
+            <AppNavigationLink
+              className={primaryNeutralButtonClass}
+              path={rootRoute.path}
+              search={(s) => ({
+                ...s,
+                filters: data.segment_data.filters,
+                labels: data.segment_data.labels
+              })}
+              state={{
+                expandedSegment: data,
+                modal: null
+              }}
+            >
+              Edit segment
+            </AppNavigationLink>
+          </ButtonsRow>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -422,7 +448,8 @@ export const AllSegmentsModal = () => {
   const { query } = useQueryContext()
   const querySegmentIds: number[] =
     (query.filters.find(isSegmentFilter)?.[2] as number[]) ?? []
-  const { data } = useSegmentsListQuery()
+  const q = useSegmentsListQuery()
+  const data = q.data?.filter((d) => querySegmentIds.includes(d.id))
   const [search, setSearch] = useState<string>()
   const [selectedSegmentIds, setSelectedSegmentIds] =
     useState<number[]>(querySegmentIds)
@@ -468,6 +495,8 @@ export const AllSegmentsModal = () => {
     setUpToSiteSegment(4)
   }, [data, search])
 
+  const segment = data ? data[0] : null
+
   return (
     <ModalWithRouting
       maxWidth="460px"
@@ -475,126 +504,30 @@ export const AllSegmentsModal = () => {
     >
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-x-2">
-          <h1 className="text-xl font-bold dark:text-gray-100">Segments</h1>
+          <h1 className="text-xl font-bold dark:text-gray-100">
+            {segment ? segment.name : 'Segment'}
+          </h1>
         </div>
-        <SearchInput onSearch={(v) => setSearch(v)} />
+        {/* <SearchInput onSearch={(v) => setSearch(v)} /> */}
       </div>
       <div className="my-4 border-b border-gray-300"></div>
 
       <div className="flex flex-col gap-y-2">
-        {[
-          {
-            segments: personalSegments,
-            title: 'Personal',
-            sliceEnd: upToPersonalSegment,
-            showMore: () => setUpToPersonalSegment((curr) => curr + 10)
-          },
-          {
-            segments: siteSegments,
-            title: 'Site',
-            sliceEnd: upToSiteSegment,
-            showMore: () => setUpToSiteSegment((curr) => curr + 10)
-          }
-        ]
-          .filter((i) => !!i.segments?.length)
-          .map(({ segments, title, sliceEnd, showMore }) => (
-            <React.Fragment key={title}>
-              <h2 className="mt-2 text-l font-bold dark:text-gray-100">
-                {title}
-              </h2>
-              {segments!.slice(0, sliceEnd).map((item) => (
-                <SegmentRow
-                  segmentDataVisible={segmentDataVisibleIds.includes(item.id)}
-                  toggleSegmentDataVisible={getToggleExpanded(item.id)}
-                  key={item.id}
-                  {...item}
-                  toggleSelected={getToggleSelected(item.id)}
-                  selected={selectedSegmentIds.includes(item.id)}
-                />
-              ))}
-              {segments?.length && sliceEnd < segments.length && (
-                <button
-                  onClick={showMore}
-                  className={classNames(
-                    'self-center mt-1',
-                    secondaryButtonClass
-                  )}
-                >
-                  Show more
-                </button>
-              )}
-            </React.Fragment>
-          ))}
+        {!segment
+          ? null
+          : [segment].map((item) => (
+              <SegmentRow
+                segmentDataVisible={segmentDataVisibleIds.includes(item.id)}
+                toggleSegmentDataVisible={getToggleExpanded(item.id)}
+                key={item.id}
+                {...item}
+                toggleSelected={getToggleSelected(item.id)}
+                selected={selectedSegmentIds.includes(item.id)}
+              />
+            ))}
         {!personalSegments?.length && !siteSegments?.length && (
           <p>No segments found.</p>
         )}
-      </div>
-
-      <div className="mt-4">
-        <ButtonsRow>
-          <AppNavigationLink
-            className={primaryNeutralButtonClass}
-            path={rootRoute.path}
-            search={(s) => {
-              const nonSegmentFilters = query.filters.filter(
-                (f) => !isSegmentFilter(f)
-              )
-              if (!proposedSegmentFilter) {
-                return {
-                  ...s,
-                  filters: nonSegmentFilters,
-                  labels: cleanLabels(
-                    nonSegmentFilters,
-                    query.labels,
-                    'segment',
-                    {}
-                  )
-                }
-              }
-              const filters = nonSegmentFilters.concat([proposedSegmentFilter])
-              const labels = cleanLabels(
-                filters,
-                query.labels,
-                'segment',
-                Object.fromEntries(
-                  selectedSegmentIds.map((id) => [
-                    formatSegmentIdAsLabelKey(id),
-                    data?.find((i) => i.id === id)?.name ?? ''
-                  ])
-                )
-              )
-              return {
-                ...s,
-                filters,
-                labels
-              }
-            }}
-          >
-            Apply {selectedSegmentIds.length}{' '}
-            {selectedSegmentIds.length === 1 ? 'segment' : 'segments'}
-          </AppNavigationLink>
-          <AppNavigationLink
-            className={primaryNegativeButtonClass}
-            path={rootRoute.path}
-            search={(s) => {
-              const nonSegmentFilters = query.filters.filter(
-                (f) => !isSegmentFilter(f)
-              )
-              return {
-                ...s,
-                filters: nonSegmentFilters,
-                labels: cleanLabels(
-                  nonSegmentFilters,
-                  query.labels,
-                  'segment',
-                  {}
-                )
-              }
-            }}
-          >
-            Clear
-          </AppNavigationLink>
-        </ButtonsRow>
       </div>
     </ModalWithRouting>
   )
