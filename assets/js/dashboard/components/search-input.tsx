@@ -50,7 +50,7 @@ export const SearchInput = ({
   )
 
   useKeybind({
-    target: searchBoxRef.current,
+    target: document,
     keyboardKey: 'Escape',
     type: 'keyup',
     handler: blurSearchBox,
@@ -58,7 +58,7 @@ export const SearchInput = ({
   })
 
   useKeybind({
-    target: searchBoxRef.current,
+    target: document,
     keyboardKey: '/',
     type: 'keyup',
     handler: focusSearchBox,
