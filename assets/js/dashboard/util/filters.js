@@ -124,16 +124,6 @@ export function hasGoalFilter(query) {
   return getFiltersByKeyPrefix(query, 'goal').length > 0
 }
 
-export function useHasGoalFilter() {
-  const {
-    query: { filters }
-  } = useQueryContext()
-  return useMemo(
-    () => getFiltersByKeyPrefix({ filters }, 'goal').length > 0,
-    [filters]
-  )
-}
-
 export function isRealTimeDashboard(query) {
   return query?.period === 'realtime'
 }
