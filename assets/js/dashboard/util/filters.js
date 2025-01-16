@@ -1,6 +1,6 @@
 /** @format */
 
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import * as api from '../api'
 import { useQueryContext } from '../query-context'
 
