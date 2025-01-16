@@ -3,6 +3,8 @@ defmodule Plausible.Teams.Memberships.UpdateRole do
   Service for updating role of a team member.
   """
 
+  import Ecto.Query
+
   alias Plausible.Repo
   alias Plausible.Teams.Memberships
 
@@ -12,7 +14,8 @@ defmodule Plausible.Teams.Memberships.UpdateRole do
     with {:ok, team_membership} <- Memberships.get_team_membership(team, user_id),
          {:ok, current_user_role} <- Memberships.team_role(team, current_user),
          granting_to_self? = team_membership.user_id == user_id,
-         :ok <- check_can_grant_role(current_user_role, new_role, granting_to_self?) do
+         :ok <- check_can_grant_role(current_user_role, new_role, granting_to_self?),
+         :ok <- check_owner_can_get_demoted(team, team_membership.role, new_role) do
       team_membership =
         team_membership
         |> Ecto.Changeset.change(role: new_role)
@@ -22,6 +25,22 @@ defmodule Plausible.Teams.Memberships.UpdateRole do
       {:ok, team_membership}
     end
   end
+
+  defp check_owner_can_get_demoted(team, :owner, new_role) when new_role != :owner do
+    owners_count =
+      Repo.aggregate(
+        from(tm in Teams.Membership, where: tm.id == ^team.id and role = :owner),
+        :count
+      )
+
+    if owners_count > 1 do
+      :ok
+    else
+      {:error, :only_one_owner}
+    end
+  end
+
+  defp check_owner_can_get_demoted(_team, _current_role, _new_role), do: :ok
 
   defp check_can_grant_role(user_role, role, true) do
     if can_grant_role_to_self?(user_role, role) do
