@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Support for `case_sensitive: false` modifiers in Stats API V2 filters for case-insensitive searches.
 - Add text version to emails plausible/analytics#4674
 - Add support for behavioral filtering with `has_done` and `has_not_done` filters in APIv2 plausible/analytics#4980
+- Add filter `has not done` for goals in dashboard plausible/analytics#4983
 
 ### Removed
 
