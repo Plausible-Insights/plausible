@@ -42,6 +42,21 @@ defmodule Plausible.Segments do
     end
   end
 
+  @spec get_many(Plausible.Site.t(), list(pos_integer()), Keyword.t()) ::
+          {:ok, [Segments.Segment.t()]}
+  def get_many(%Plausible.Site{} = site, segment_ids, opts) when is_list(segment_ids) do
+    fields = Keyword.get(opts, :fields, [:id])
+
+    query =
+      from(segment in Segments.Segment,
+        select: ^fields,
+        where: segment.site_id == ^site.id,
+        where: segment.id in ^segment_ids
+      )
+
+    {:ok, Repo.all(query)}
+  end
+
   @spec get_one(pos_integer(), Plausible.Site.t(), atom(), pos_integer() | nil) ::
           {:ok, Segments.Segment.t()}
           | error_not_enough_permissions()
@@ -65,12 +80,12 @@ defmodule Plausible.Segments do
       ) do
     with :ok <- can_insert_one?(site, site_role, params),
          %{valid?: true} = changeset <-
-           Plausible.Segments.Segment.changeset(
-             %Plausible.Segments.Segment{},
+           Segments.Segment.changeset(
+             %Segments.Segment{},
              Map.merge(params, %{"site_id" => site.id, "owner_id" => user_id})
            ),
          :ok <-
-           Plausible.Segments.Segment.validate_segment_data(site, params["segment_data"], true) do
+           Segments.Segment.validate_segment_data(site, params["segment_data"], true) do
       {:ok, Repo.insert!(changeset)}
     else
       %{valid?: false, errors: errors} ->
@@ -146,7 +161,7 @@ defmodule Plausible.Segments do
 
   defp do_get_one(user_id, site_id, segment_id) do
     query =
-      from(segment in Plausible.Segments.Segment,
+      from(segment in Segments.Segment,
         where: segment.site_id == ^site_id,
         where: segment.id == ^segment_id,
         where: segment.type == :site or segment.owner_id == ^user_id
@@ -201,7 +216,7 @@ defmodule Plausible.Segments do
 
   @spec get_site_segments_only_query(pos_integer(), list(atom())) :: Ecto.Query.t()
   defp get_site_segments_only_query(site_id, fields) do
-    from(segment in Plausible.Segments.Segment,
+    from(segment in Segments.Segment,
       select: ^fields,
       where: segment.site_id == ^site_id,
       where: segment.type == :site,
@@ -212,7 +227,7 @@ defmodule Plausible.Segments do
   @spec get_personal_segments_only_query(pos_integer(), pos_integer(), list(atom())) ::
           Ecto.Query.t()
   defp get_personal_segments_only_query(user_id, site_id, fields) do
-    from(segment in Plausible.Segments.Segment,
+    from(segment in Segments.Segment,
       select: ^fields,
       where: segment.site_id == ^site_id,
       where: segment.type == :personal and segment.owner_id == ^user_id,
@@ -223,7 +238,7 @@ defmodule Plausible.Segments do
   @spec get_personal_and_site_segments_query(pos_integer(), pos_integer(), list(atom())) ::
           Ecto.Query.t()
   defp get_personal_and_site_segments_query(user_id, site_id, fields) do
-    from(segment in Plausible.Segments.Segment,
+    from(segment in Segments.Segment,
       select: ^fields,
       where: segment.site_id == ^site_id,
       where:
