@@ -419,7 +419,7 @@ defmodule Plausible.Exports do
     current_user = current_user_id && Plausible.Repo.get(Plausible.Auth.User, current_user_id)
 
     scroll_depth_enabled? =
-      PlausibleWeb.Api.StatsController.scroll_depth_enabled?(site, current_user)
+      PlausibleWeb.StatsController.scroll_depth_enabled?(site, current_user)
 
     base_q =
       from(e in sampled("events_v2"),
@@ -430,6 +430,8 @@ defmodule Plausible.Exports do
       )
 
     if scroll_depth_enabled? do
+      Plausible.Sites.maybe_enable_engagement_metrics(site)
+
       max_scroll_depth_per_visitor_q =
         from(e in "events_v2",
           where: ^export_filter(site_id, date_range),
